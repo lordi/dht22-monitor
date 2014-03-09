@@ -2,3 +2,5 @@
 *.hex
 *.bin
 *.ld
+*.sw?
+.DS_Store
