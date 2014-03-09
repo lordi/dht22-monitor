@@ -1,18 +1,6 @@
-/**************************************************************************//**
- * @file     usbserial.c
- * @brief    USB Virtual COM-port (CDC) func source file
- * @version  v1.0
- * @date     24.06.2012
- *
- * @note
- * Copyright (C) 2012 kab
- *
- ******************************************************************************/
-
-/******************************************************************************
- * Includes
- *****************************************************************************/
-
+/*
+ * DHT22 driver for the STM32F429
+ */
 #include "inttypes.h"
 #include <string.h>
 
@@ -22,30 +10,23 @@
 #include "stm32f4xx_exti.h"
 #include "dht22.h"
 #include "timer.h"
-/*#include "stm32f10x.h"
-#include "stm32f10x_rcc.h"
-#include "stm32f10x_gpio.h"*/
-//#include "misc.h"
-//#include "queue.h"
-//#include "interrupt.h"
-//#include "exti.h"
-//#include "timer.h"
 
-/******************************************************************************
- * Defines
- *****************************************************************************/
-
+/* Config */
 #define DHT22_GPIO	GPIOG
 #define DHT22_PIN GPIO_Pin_5
 
+/* Globals */
 static uint8_t dht_bytes[5];
+
+/* Implementation */
 
 /* read values from DHT22, return SUCCESS or ERROR */
 int dht22_read() {
 
-      memset(&dht_bytes, 0, 5);
+    memset(&dht_bytes, 0, 5);
 
-        dht22_start();
+    /* send startup sequence, see DHT22 digital protocol */
+    dht22_start();
 
     int odr = GPIO_ReadInputDataBit(DHT22_GPIO, DHT22_PIN);
     int state = odr ? 1 : 0;
@@ -53,12 +34,11 @@ int dht22_read() {
     int measure_start = timer_get();
     int last_measure_start = measure_start;
     int cur_timer = measure_start;
-    //uwTimingDelay = measure_start;
-    while (cnt <= 42 && cur_timer > 0 && (measure_start - cur_timer) < 300000L) {
+
+    while (cnt <= 41 && cur_timer > 0 && (measure_start - cur_timer) < 300000L) {
 
         int odr = GPIO_ReadInputDataBit(DHT22_GPIO, DHT22_PIN);
         if (odr && state == 0) {
-            //cnt++;
             last_measure_start = cur_timer;
         }
         if (!odr && state == 1) {
@@ -78,39 +58,32 @@ int dht22_read() {
 }
 
 void dht22_start(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-  
+    GPIO_InitTypeDef GPIO_InitStructure;
+
     // Clock Enable
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOG, ENABLE);
 
     // configure pin
-	GPIO_InitStructure.GPIO_Pin = DHT22_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	//GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pin = DHT22_PIN;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
     GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    //GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
     GPIO_Init(DHT22_GPIO, &GPIO_InitStructure);
 
     GPIO_ResetBits(DHT22_GPIO, DHT22_PIN);
-	timer_delay(500L);
+    timer_delay(500L);
 
     GPIO_SetBits(DHT22_GPIO, DHT22_PIN);
     timer_delay(40L);
 
-	// switch to input
-	GPIO_InitStructure.GPIO_Pin = DHT22_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    // switch to input
+    GPIO_InitStructure.GPIO_Pin = DHT22_PIN;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
     GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
     GPIO_Init(DHT22_GPIO, &GPIO_InitStructure);
 
-    //g_DhtMeasuring = 1;
-    //memset(&g_DhtRaw, 5, 0);
-
 }
-
-
 
 uint16_t dht22_get_humidity() {
     return (dht_bytes[0] << 8 | dht_bytes[1]);
